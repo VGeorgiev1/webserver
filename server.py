@@ -3,6 +3,7 @@ import socket
 from HttpContext import HttpContext
 import sys
 from os import fork, _exit, waitpid, WNOHANG
+import signal
 from StaticHandler import serve
 from Response import Response
 HOST, PORT = '', 8888
@@ -38,24 +39,21 @@ def handle_client(client_connection, client_address):
 
 activeChildren = []
 
-def reapChildren():
-    while activeChildren:
-        pid, stat = waitpid(0, WNOHANG)
-        if not pid: break
-        activeChildren.remove(pid)
-        print(activeChildren)
+def waitChild(signum, frame):
+  pid, stat = waitpid(-1, WNOHANG)
 
+signal.signal(signal.SIGCHLD, waitChild)
 
 def server():
     while True:
         c, addr = s.accept()
-        reapChildren();
+        ##reapChildren();
         child_pid = fork()
 
         if child_pid == 0:
             handle_client(c, addr)
+            c.close()
             _exit(0)
-            break;
         else:
-            waitpid(-1, WNOHANG)
+            c.close()
 server()
