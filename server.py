@@ -6,6 +6,7 @@ from os import fork, _exit, waitpid, WNOHANG
 import signal
 from StaticHandler import serve
 from Response import Response
+from Request import Request
 HOST, PORT = '', 8888
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -15,27 +16,60 @@ s.listen(10)
 
 static_folder = '/home/vladislav/web-server/'
 
-print(f'Serving HTTP on port {PORT} ...')
+#print(f'Serving HTTP on port {PORT} ...')
 
+def parse_headers(headers_str):
+    headers = {}
+
+
+    splited_headers = headers_str.splitlines()
+    
+    headers['method'], headers['path'], headers['version'] = splited_headers[0].split()
+    splited_headers.pop(0)
+
+    for header_pair in splited_headers:
+        header, value = header_pair.split(':', 1)
+        headers[str(header).upper()] = str(value).strip()
+    return headers
 
 def handle_client(client_connection, client_address):
-    request_data = client_connection.recv(4096)
-    decoded = request_data.decode('utf-8')
 
-    if(len(decoded) == 0):
-        client_connection.close()
-        return
+    headers = ''
+    body = b''
+    in_body = False
+    headers_obj = {}
+    while True:
+        chunk = client_connection.recv(1024)
 
-    http = HttpContext(decoded)
-    
-    request = http.parse()
-    response = Response()
+        if not chunk:
+            break
+        
+        if not in_body:
 
-    serve(request, response)
+            body_start_found = chunk.find(b'\r\n\r\n')
+            
+            if  body_start_found < 0:
+                headers += chunk.decode('utf-8')
 
-    client_connection.send(response.get_raw())
-    client_connection.close()
-    return
+            elif body_start_found >= 0:
+                in_body = True
+                
+                headers += chunk[:body_start_found].decode('utf-8')
+                
+                headers_obj = parse_headers(headers)
+                print(headers_obj)
+                if 'CONTENT-LENGTH' not in headers_obj:
+                    return Request({}, '')
+                
+                if len(chunk) > body_start_found:
+                    body += chunk[body_start_found:]
+        else:
+            body += chunk
+
+        if len(body) == int(headers_obj['CONTENT-LENGTH']) + 4:
+            break
+    print(headers_obj)
+    return Request(headers_obj, body)
 
 activeChildren = []
 
@@ -47,11 +81,12 @@ signal.signal(signal.SIGCHLD, waitChild)
 def server():
     while True:
         c, addr = s.accept()
-        ##reapChildren();
         child_pid = fork()
 
         if child_pid == 0:
-            handle_client(c, addr)
+            req = handle_client(c, addr)
+            print(req.get_method())
+            c.send(b'so far nothing')
             c.close()
             _exit(0)
         else:

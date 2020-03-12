@@ -1,5 +1,5 @@
 class Response:
-    def __init__(self, version = "HTTP 1.1", status = None, headers = dict(), body=b''):
+    def __init__(self, status = None, headers = dict(), body=b'', version = "HTTP 1.1"):
         self.version = version
         self.status = status
         self.headers = headers
