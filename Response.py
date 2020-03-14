@@ -1,5 +1,5 @@
 class Response:
-    def __init__(self, status = None, headers = dict(), body=b'', version = "HTTP 1.1"):
+    def __init__(self, status = None, headers = dict(), version = "HTTP/1.1", body=b''):
         self.version = version
         self.status = status
         self.headers = headers
@@ -15,7 +15,6 @@ class Response:
             self.status +
             '\r\n' +
             '\r\n'.join(map(lambda h: h[0] + ': ' + h[1], self.headers.items())) +
-            '\r\n\r\n', 'ascii'
-        ) + self.body
+            '\r\n\r\n') + self.body
     def set_status(self, status):
         self.status = status

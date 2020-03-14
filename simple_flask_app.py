@@ -10,3 +10,4 @@ def hello_world():
         'Hello world from Flask!\n',
         mimetype='text/plain'
     )
+app = flask_app.wsgi_app
