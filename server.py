@@ -7,6 +7,7 @@ from Response import Response
 from Request import Request
 from wsgi_handler import WSGI
 from static_handler import Static
+from logger import Logger
 
 import errno
 HOST, PORT = '', 8888
@@ -18,8 +19,6 @@ s.listen(10)
 
 
 static_folder = '/home/vladislav/web-server/'
-
-#print(f'Serving HTTP on port {PORT} ...')
 
 def parse_headers(headers_str):
     headers = {}
@@ -73,7 +72,7 @@ def handle_client(client_connection, client_address):
         if in_body and len(body) == int(headers_obj['CONTENT-LENGTH']) + 4:
             break
 
-    return Request(headers_obj, body)
+    return Request(headers_obj, body, )
 
 activeChildren = []
 
@@ -82,32 +81,35 @@ def waitChild(signum, frame):
 
 signal.signal(signal.SIGCHLD, waitChild)
 
+logger = Logger()
+
 def server(handler):
     while True:
         try:
             c, addr = s.accept()
+
             child_pid = fork()
 
             if child_pid == 0:
                 req = handle_client(c, addr)
-                res = handler.handle(req)
-                c.send(res.get_raw())
-                c.close()
-                _exit(0)
+                res = {}
+                try:
+                    res = handler.handle(req)
+                    logger.access_log(req, res, addr[0])
+                except Exception as ex:
+                    logger.error_log(req, ex, addr[0])
+                    res = Response("500 Internal Server Error")
+                finally:
+                    c.send(res.get_raw())
+                    _exit(0)
             else:
                 c.close()
-        except socket.error as (code, err):
-            if code != errno.EINTR:
-                raise
+        except socket.error as err:
+            print(err)
 
 if __name__ == '__main__':
-    #if len(sys.argv) < 2:
-    #    sys.exit('Provide a WSGI application object as module:callable')
-    #app_path = sys.argv[1]
-    #module, application = app_path.split(':')
-    #module = __import__(module)
-    #application = getattr(module, application)
-    #wsgi = WSGI(PORT, 'localhost', application)
-    static = Static()
+    wsgi = WSGI(PORT, 'localhost')
+    wsgi.load_application("./simple_flask_app.py")
+    #static = Static()
     print('Server: Serving HTTP on port %s ...\n' % (PORT))
-    server(static)
+    server(wsgi)

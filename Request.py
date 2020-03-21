@@ -9,6 +9,6 @@ class Request:
     def get_path(self):
         return self.headers['path'][1:]
     def get_version(self):
-        return self.version['version']
+        return self.headers['version']
     def get_body(self):
         return self.body

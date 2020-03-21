@@ -7,20 +7,26 @@ class Static:
     def __init__(self):        
         pass
     def handle(self,request):
-        response = Response('200 OK')
-        file_path = path.join(path.dirname(path.realpath(__file__)), request.get_path())
-        try:
-            size = path.getsize(file_path)
-            response.set_header("Content-Length", str(size))
-            chunk = 200
+        response = Response()
 
-            f = open(file_path, "r")
-            while True:
-                data = f.read(chunk)
-                if not data:
-                    break
-                response.write_body(str.encode(data))
-            f.close()
+        file_path = path.join(path.dirname(path.realpath(__file__)), request.get_path())
+        
+        if not path.isfile(file_path):
+            response.set_status("404 Not Found")
             return response
-        except FileNotFoundError:
-            print(file_path + " not found")
+
+        chunk = 200
+        f = open(file_path, "r")
+
+        while True:
+            data = f.read(chunk)
+            if not data:
+                break
+            response.write_body(str.encode(data))
+
+        size = path.getsize(file_path)
+        f.close()
+
+        response.set_header("Content-Length", str(size))
+        response.set_status("200 OK")
+        return response
