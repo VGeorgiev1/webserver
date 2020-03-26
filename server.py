@@ -57,7 +57,6 @@ def handle_client(client_connection, client_address):
                 headers += chunk[:body_start_found].decode('utf-8')
                 
                 headers_obj = parse_headers(headers)
-
                 if len(chunk) > body_start_found + 4:
                     in_body = True
                     body += chunk[body_start_found:]
@@ -78,7 +77,8 @@ activeChildren = []
 
 def waitChild(signum, frame):
   pid, stat = waitpid(-1, WNOHANG)
-
+8443 
+24516
 signal.signal(signal.SIGCHLD, waitChild)
 
 logger = Logger()
@@ -89,27 +89,27 @@ def server(handler):
             c, addr = s.accept()
 
             child_pid = fork()
-
             if child_pid == 0:
                 req = handle_client(c, addr)
-                res = {}
                 try:
                     res = handler.handle(req)
                     logger.access_log(req, res, addr[0])
+                    c.send(res.get_raw())
                 except Exception as ex:
                     logger.error_log(req, ex, addr[0])
                     res = Response("500 Internal Server Error")
                 finally:
-                    c.send(res.get_raw())
+                    c.close()
                     _exit(0)
             else:
                 c.close()
         except socket.error as err:
+            print('here?')
             print(err)
 
 if __name__ == '__main__':
-    wsgi = WSGI(PORT, 'localhost')
-    wsgi.load_application("./simple_flask_app.py")
-    #static = Static()
+    #wsgi = WSGI(PORT, 'localhost')
+    #wsgi.load_application("./simple_flask_app.py")
+    static = Static()
     print('Server: Serving HTTP on port %s ...\n' % (PORT))
-    server(wsgi)
+    server(static)
